@@ -91,3 +91,28 @@ frontend/
 - PDF generation — currently saves as .txt (stub in note_formatter.py)
 - Real protocol auto-detection — Nova Pro output doesn't yet auto-trigger
   protocol_engine checklist creation
+
+## Current Build Status
+
+### Backend — COMPLETE ✅
+- All routes tested and verified via Swagger UI
+- JSON file storage working
+- WebSocket endpoint ready at /voice/ws/{incident_id}
+
+### Frontend — IN PROGRESS 🔄
+- Vite 6 + React + Tailwind v4 installed and working
+- Dark medical monitor aesthetic established (#0a0a0a bg, #00ff41 text)
+- Monospace font (Courier New) applied globally
+
+### Components Built So Far
+- App.jsx — points to Dashboard, no routing yet
+- services/api.js — all backend URLs centralized here
+- pages/Dashboard.jsx — skeleton with 4 placeholder boxes
+- components/VoiceConsole.jsx — incident ID input + START/END button
+- components/LiveTranscript.jsx
+- components/PatientVitalsCard.jsx
+- components/ProtocolChecklist.jsx
+- components/FinalReport.jsx
+
+### Components Still Needed
+- None - UI is complete

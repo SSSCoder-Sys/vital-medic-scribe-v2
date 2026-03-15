@@ -1,0 +1,18 @@
+/* Tailwind v4 — this one line loads ALL of Tailwind's utility classes */
+@import "tailwindcss";
+
+/* Base styles for the entire app.
+   Every page will inherit this dark medical monitor look. */
+body {
+  background-color: #0a0a0a;
+  color: #00ff41;
+  font-family: 'Courier New', Courier, monospace;
+  margin: 0;
+  min-height: 100vh;
+}
+
+/* Make the React root div take up the full screen */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
