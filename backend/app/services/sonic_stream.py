@@ -1,6 +1,5 @@
 import asyncio
 import json
-import base64
 import ssl
 import websockets
 from app.config import Config

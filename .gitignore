@@ -1,0 +1,26 @@
+# === SECRET FILES ===
+# Your API keys. Never let this reach GitHub.
+.env
+
+# === PYTHON STUFF ===
+# Your virtual environment. It's huge (hundreds of files) and
+# anyone can recreate it themselves using requirements.txt
+.venv/
+
+# These are auto-generated files Python creates when it runs your code.
+# They're just speed caches — useless to anyone else.
+__pycache__/
+*.pyc
+*.pyo
+
+# === PROJECT SPECIFIC ===
+# The reports folder gets auto-created when your app runs.
+# It'll contain real patient data in a real scenario — never commit that.
+reports/
+
+# === SYSTEM FILES ===
+# Mac automatically creates these in every folder. Useless to everyone else.
+.DS_Store
+
+# Windows creates this. Same idea.
+Thumbs.db

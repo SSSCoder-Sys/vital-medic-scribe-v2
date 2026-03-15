@@ -1,7 +1,10 @@
-fastapi
-uvicorn[standard]
-websockets
-openai
-python-dotenv
-pydantic
-python-multipart
+fastapi             # For building the API - main.py and all route files
+uvicorn[standard]   # For running the server
+websockets          # For real-time audio streaming
+openai              # For pro_reasoner.py
+python-dotenv       # For config.py
+pydantic            # For all three model files
+python-multipart    # Useful for when fronend sends audio files via HTTP upload
+boto3               # Would only be needed if you switch to raw AWS SDK instead of the Nova OpenAI-compatible API
+aiofiles            # Would be needed for async file reading — not currently used
+sqlalchemy          # We replaced the database with JSON files, so this never got used

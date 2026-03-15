@@ -35,7 +35,7 @@ def create_final_report(patient: Patient, checklist: ProtocolChecklist) -> Final
     """Assemble a FinalReport object."""
     summary = format_ems_report(patient, checklist)
     # Extract vitals history as list of dicts for JSON serialization
-    vitals_history = [v.dict() for v in patient.vitals]
+    vitals_history = [v.model_dump() for v in patient.vitals]
     report = FinalReport(
         incident_id=patient.incident_id,
         incident_time=patient.incident_time,
