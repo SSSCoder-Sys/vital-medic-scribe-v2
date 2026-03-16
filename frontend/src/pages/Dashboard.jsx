@@ -256,7 +256,7 @@ function Dashboard() {
             // Filter to only keys with actual values so a null heart_rate in
             // this chunk doesn't overwrite a real one we got earlier
             ...Object.fromEntries(
-              Object.entries(incoming).filter(([, v]) => v != null)
+              Object.entries(incoming).filter(([, v]) => v != null && v !== 0)
             ),
           }))
         }
