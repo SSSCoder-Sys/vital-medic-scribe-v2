@@ -25,7 +25,7 @@
 //   without a separate AudioWorklet file.
 
 import { useState, useRef } from 'react'
-import { connectVoiceStream, sendAudioChunk } from '../services/api.js'
+import { connectVoiceStream, sendAudioChunk, startProtocol } from '../services/api.js'
 import VoiceConsole from '../components/VoiceConsole.jsx'
 import LiveTranscript from '../components/LiveTranscript.jsx'
 import PatientVitalsCard from '../components/PatientVitalsCard.jsx'
@@ -58,6 +58,53 @@ function int16ToBase64(int16Array) {
   return btoa(binary)
 }
 
+// ── Protocol auto-detection ───────────────────────────────────────────────────
+
+// Maps the 4 condition strings the backend protocol engine recognizes to a set
+// of symptom keywords. Any symptom in Nova Pro's output that contains one of
+// these keywords will trigger that protocol.
+//
+// Keyword matching is intentionally broad — better to fire a "cardiac event"
+// checklist on "chest tightness" than to miss it entirely.
+const CONDITION_KEYWORDS = [
+  {
+    condition: 'cardiac event',
+    keywords: ['chest pain', 'chest pressure', 'chest tightness', 'cardiac',
+               'heart attack', 'myocardial', 'angina', 'palpitation', 'crushing chest'],
+  },
+  {
+    condition: 'stroke',
+    keywords: ['stroke', 'facial droop', 'arm weakness', 'slurred speech',
+               'cva', 'facial weakness', 'speech difficulty', 'hemiplegia', 'sudden weakness'],
+  },
+  {
+    condition: 'respiratory distress',
+    keywords: ['shortness of breath', 'difficulty breathing', 'dyspnea',
+               'wheezing', 'asthma', 'breathless', 'hypoxia', 'respiratory'],
+  },
+  {
+    condition: 'trauma',
+    keywords: ['trauma', 'injury', 'accident', 'fall', 'laceration',
+               'fracture', 'mva', 'collision', 'gunshot', 'stab', 'hemorrhage'],
+  },
+]
+
+// Given a symptoms array from Nova Pro (e.g. ["chest pain", "left arm radiation"]),
+// return the first matching condition string, or null if nothing matches.
+function detectCondition(symptoms) {
+  if (!symptoms?.length) return null
+  // Lowercase everything once so the inner comparisons are fast
+  const lowerSymptoms = symptoms.map((s) => s.toLowerCase())
+  for (const { condition, keywords } of CONDITION_KEYWORDS) {
+    for (const keyword of keywords) {
+      if (lowerSymptoms.some((s) => s.includes(keyword))) {
+        return condition
+      }
+    }
+  }
+  return null
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
 function Dashboard() {
@@ -72,6 +119,11 @@ function Dashboard() {
   // ── Refs: WebSocket ────────────────────────────────────────────────────────
   // useRef keeps these values across renders without triggering re-renders.
   const wsRef = useRef(null)
+
+  // Tracks whether we have already started a protocol for this call.
+  // We only want to fire startProtocol() once per incident — the first time
+  // Nova Pro finds recognizable symptoms — not on every subsequent transcript.
+  const protocolStartedRef = useRef(false)
 
   // ── Refs: Audio pipeline ───────────────────────────────────────────────────
   // The browser MediaStream (holds the mic track — we must stop() it on end).
@@ -191,8 +243,39 @@ function Dashboard() {
         setTranscriptLines((prev) => [...prev, transcript])
       },
       (structured) => {
-        if (structured.vitals)    setVitals(structured.vitals)
-        if (structured.checklist) setChecklist(structured.checklist)
+        // ── Bug 1 fix: merge vitals instead of replacing ──────────────────
+        // Nova Pro only includes fields it actually heard in this transcript
+        // chunk. Replacing the whole vitals object would wipe out BP if only
+        // heart rate was mentioned in the latest phrase. Instead, spread the
+        // previous vitals and overlay only the fields that are non-null in the
+        // new data — so every reading we've ever heard is preserved.
+        if (structured.vitals) {
+          const incoming = structured.vitals
+          setVitals((prev) => ({
+            ...prev,
+            // Filter to only keys with actual values so a null heart_rate in
+            // this chunk doesn't overwrite a real one we got earlier
+            ...Object.fromEntries(
+              Object.entries(incoming).filter(([, v]) => v != null)
+            ),
+          }))
+        }
+
+        // ── Bug 2 fix: auto-start a protocol from symptoms ────────────────
+        // Nova Pro has no "suspected_condition" field — it only returns a
+        // symptoms array. detectCondition() maps those symptoms to one of the
+        // 4 condition strings the backend protocol engine recognizes.
+        // We call startProtocol() at most once per call (protocolStartedRef
+        // guards against re-triggering on every subsequent transcript chunk).
+        if (!protocolStartedRef.current && structured.symptoms?.length) {
+          const condition = detectCondition(structured.symptoms)
+          if (condition) {
+            protocolStartedRef.current = true   // lock so we don't fire again
+            startProtocol(id, condition)
+              .then((newChecklist) => setChecklist(newChecklist))
+              .catch((err) => console.warn('Auto-protocol failed:', err))
+          }
+        }
       },
       (errMsg) => {
         setError(errMsg)
@@ -221,6 +304,8 @@ function Dashboard() {
       wsRef.current.close()
       wsRef.current = null
     }
+    // Reset the protocol guard so the next incident can auto-detect again
+    protocolStartedRef.current = false
     setIsConnected(false)
   }
 
